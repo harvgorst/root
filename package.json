@@ -1,0 +1,11 @@
+{
+  "name": "root",
+  "private": true,
+  "description": "root, the crop planner: a planner for vegetable plots and allotments",
+  "scripts": {
+    "test": "node tests/smoke.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.48.0"
+  }
+}
