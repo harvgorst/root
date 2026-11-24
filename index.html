@@ -415,6 +415,8 @@ html[data-skin=root] .btn, html[data-skin=root] .seg, html[data-skin=root] selec
 html[data-skin=root] .card, html[data-skin=root] .toolbar, html[data-skin=root] .calview, html[data-skin=root] fieldset.pref, html[data-skin=root] .tool, html[data-skin=root] .lib li,
 html[data-skin=root] .mapwrap, html[data-skin=root] .thopt, html[data-skin=root] .confirm, html[data-skin=root] .todo section { border-radius: 2px; }
 html[data-skin=root] .btn { background: transparent; }
+html[data-skin=root] .btn.primary { background: var(--accent); border-color: var(--accent); }   /* filled, or its dark text vanishes on the dark ground */
+html[data-skin=root] .btn.danger.solid { background: var(--crit); border-color: var(--crit); }
 html[data-skin=root] .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 html[data-skin=root] .btn.primary:hover:not(:disabled) { color: var(--accent-ink); }
 html[data-skin=root] .btn.danger.solid { color: #0C0E0B; }
