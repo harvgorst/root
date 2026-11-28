@@ -968,7 +968,7 @@ function renderLibrary() {
   const fams = Object.keys(GROUPS).filter(k => mine.some(c => c.group === k));
   $('libChips').innerHTML = fams.map(k => `<button type="button" data-fam="${k}" aria-pressed="${LIBF.fams.includes(k)}">${famSw(k, 8)}${esc(GROUPS[k])}</button>`).join('') + `<span class="sep"></span><button type="button" data-fam="__used" aria-pressed="${LIBF.used}">On this plan <i>${used.size}</i></button>`;
   const q = S.filter.trim().toLowerCase();
-  if (!mine.length) { $('lib').innerHTML = `<li class="empty">${!S.loaded ? 'Loading your crops…' : !S.g ? 'Make a plot to start its crop list.' : `No crops on this plan’s list yet. Use <b>Add crop</b> to list what you’ll grow here: search the database, or pick from crops you’ve saved before${S.crops.length ? ` (you have ${plural(S.crops.length, 'crop')} on the <a href="#crops">Crops page</a>)` : ''}.`}</li>`; return; }
+  if (!mine.length) { $('lib').innerHTML = `<li class="empty">${!S.loaded ? 'Loading your crops…' : !S.g ? 'Make a plot to start its crop list.' : `No crops on this plan’s list yet. Use <b>Add crop</b> to list what you’ll grow here: search the Edible Plant Database, or tick crops from other plans and root’s starter crops on the <a href="#crops">Crops page</a>.`}</li>`; return; }
   const list = mine.filter(c => (!q || [c.name, c.variety, GROUPS[c.group], c.notes].join(' ').toLowerCase().includes(q)) && (!LIBF.fams.length || LIBF.fams.includes(c.group)) && (!LIBF.used || used.has(c.id)));
   if (!list.length) { $('lib').innerHTML = `<li class="empty">No crops match${S.filter ? ` “${esc(S.filter)}”` : ' those filters'}.</li>`; return; }
   $('lib').innerHTML = Object.keys(GROUPS).map(k => {
@@ -1130,7 +1130,7 @@ function renderCalendar() {
 }
 
 /* ---------- crops page ---------- */
-const DB = { q: '', fam: '', sort: 'family', dir: 1, on: '' };
+const DB = { q: '', fam: '', sort: 'family', dir: 1, on: 'on' };
 function renderCrops() {
   const F = $('dbFam');
   if (!F.options.length) F.innerHTML = '<option value="">All families</option>' + Object.entries(GROUPS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
@@ -1142,14 +1142,13 @@ function renderCrops() {
   const key = { name: c => c.name.toLowerCase(), family: c => order.indexOf(c.group) * 1000 + 0, spacing: c => num(c.spacingCm), sow: c => Math.min(firstM(c.sowIn), firstM(c.sowOut), firstM(c.plantOut)), harvest: c => firstM(c.harvest), plots: c => usedIn(c.id), source: c => c.epd ? 0 : c.starter ? 1 : 2 }[DB.sort];
   rows.sort((a, b) => { const x = key(a), y = key(b); return ((x < y ? -1 : x > y ? 1 : 0) * DB.dir) || a.name.localeCompare(b.name); });
   const onIds = libIds(), planted = new Set((S.g?.crops || []).map(b => b.cropId)), canOn = !!S.g && S.loaded;
-  if (!DB.on) DB.on = '';
-  if (DB.on) rows = rows.filter(c => onIds.has(c.id) === (DB.on === 'on'));
+  if (DB.on && S.g) rows = rows.filter(c => onIds.has(c.id) === (DB.on === 'on'));
   const allOn = rows.length && rows.every(c => onIds.has(c.id));
   const th = (k, l, n) => `<th${n ? ' class="n"' : ''}><button type="button" class="sortb" data-sort="${k}">${l}${DB.sort === k ? (DB.dir > 0 ? ' ↑' : ' ↓') : ''}</button></th>`;
   $('dbCount').textContent = `${rows.length} of ${S.crops.length} crops${S.g ? ` · ${S.crops.filter(c => onIds.has(c.id)).length} on this plan’s list` : ''}`;
-  $('dbOn').innerHTML = `<option value="">All your crops</option><option value="on">On this plan’s list</option><option value="off">Not on this plan</option>`; $('dbOn').value = DB.on; $('dbOn').hidden = !S.g;
+  $('dbOn').innerHTML = `<option value="on">This plan’s crops</option><option value="off">Crops from other plans and starters</option><option value="">Every crop</option>`; $('dbOn').value = DB.on; $('dbOn').hidden = !S.g;
   $('dbTable').innerHTML = !S.crops.length ? `<tbody><tr><td class="empty">${S.loaded ? 'No crops yet. Use Add crop to start your library.' : 'Loading your crops…'}</td></tr></tbody>`
-    : !rows.length ? '<tbody><tr><td class="empty">No crops match those filters.</td></tr></tbody>'
+    : !rows.length ? `<tbody><tr><td class="empty">${DB.on === 'on' && S.g && !DB.q && !DB.fam ? 'No crops on this plan yet. Use Add crop to search the Edible Plant Database, or choose <b>Crops from other plans and starters</b> above and tick the ones you want.' : 'No crops match those filters.'}</td></tr></tbody>`
     : `<thead><tr>${canOn ? `<th class="ck"><input type="checkbox" data-onall aria-label="Put every crop shown on this plan’s list"${allOn ? ' checked' : ''} title="${allOn ? 'Take every crop shown off this plan’s list (planted ones stay)' : 'Put every crop shown on this plan’s list'}"></th>` : ''}${th('name', 'Crop')}<th>Variety</th>${th('family', 'Family')}${th('spacing', 'Spacing', 1)}${th('sow', 'Sow')}<th>Plant out</th>${th('harvest', 'Harvest')}<th>Notes</th>${th('source', 'Source')}${th('plots', 'Plans', 1)}<th></th></tr></thead><tbody>${rows.map(c => `<tr style="--lc:${gcol(c)}">
       ${canOn ? `<td class="ck"><input type="checkbox" data-on="${c.id}"${onIds.has(c.id) ? ' checked' : ''}${planted.has(c.id) ? ' disabled title="Planted on this plan"' : ''} aria-label="${esc(c.name)} on this plan’s list"></td>` : ''}
       <td>${famSw(c.group)} <span class="cnm">${esc(c.name)}</span></td><td><i>${esc(c.variety || '')}</i></td><td>${esc(GROUPS[c.group])}</td>
@@ -1439,13 +1438,12 @@ let SUG = [];
 function showSuggestions() {
   const box = $('ce-sug'); if (!box || !S.editCrop) return;
   const q = (S.editCrop.name || '').trim().toLowerCase();
-  const others = S.crops.filter(c => c.id !== S.editCrop.id), have = new Set(others.map(c => c.name.toLowerCase())), onIds = libIds();
-  const saved = q.length < 2 || !S.editCrop._new ? [] : others.filter(c => [c.name, c.variety].join(' ').toLowerCase().includes(q)).sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name)).slice(0, 4);
+  const onIds = libIds(), have = new Set(S.crops.filter(c => c.id !== S.editCrop.id && onIds.has(c.id)).map(c => c.name.toLowerCase()));
   SUG = q.length < 2 ? [] : LK.filter(l => l.name.toLowerCase().includes(q) || l.botanical.toLowerCase().includes(q))
     .sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name)).slice(0, 6);
   if (SUG.length === 1 && SUG[0].name.toLowerCase() === q && S.editCrop.epd) SUG = [];
-  box.hidden = !SUG.length && !saved.length;
-  box.innerHTML = (saved.length ? '<div class="src"><span>Your saved crops</span></div>' + saved.map(c => `<button type="button" data-act="useSaved" data-id="${c.id}" role="option"${onIds.has(c.id) ? ' disabled' : ''}><span>${esc(cropName(c))}</span><span class="have">${onIds.has(c.id) ? 'already on this plan' : 'add to this plan'}</span></button>`).join('') : '') + (SUG.length ? '<div class="src"><span>From the Edible Plant Database, University of Dundee</span><button type="button" class="linkbtn" data-act="aboutEpd">About</button></div>' : '') + SUG.map((l, i) => `<button type="button" data-sug="${i}" role="option"><span>${esc(l.name)} <i>${esc(l.botanical)}</i></span>${have.has(l.name.toLowerCase()) ? '<span class="have">you have one saved</span>' : `<span class="note">${esc(GROUPS[l.group])}</span>`}</button>`).join('') + (SUG.length ? '<div class="ph">Fills in family, spacing and months you haven’t set yourself</div>' : '');
+  box.hidden = !SUG.length;
+  box.innerHTML = (SUG.length ? '<div class="src"><span>From the Edible Plant Database, University of Dundee</span><button type="button" class="linkbtn" data-act="aboutEpd">About</button></div>' : '') + SUG.map((l, i) => `<button type="button" data-sug="${i}" role="option"><span>${esc(l.name)} <i>${esc(l.botanical)}</i></span>${have.has(l.name.toLowerCase()) ? '<span class="have">already on this plan</span>' : `<span class="note">${esc(GROUPS[l.group])}</span>`}</button>`).join('') + (SUG.length ? '<div class="ph">Fills in family, spacing and months you haven’t set yourself</div>' : '');
 }
 function applySuggestion(l) {
   const c = S.editCrop, t = c._touched || {};
@@ -1520,7 +1518,6 @@ app.addEventListener('click', async e => {
     S.g.crops.push(blk); S.sel = { kind: 'crop', id: blk.id }; savePlot(); renderAll();
   }
   if (act === 'offPlan') { const id = S.editCrop.id; S.editCrop = null; S.confirm = null; setOnPlan([id], false); renderAll(); setStatus(`${cropById(id)?.name || 'Crop'} taken off this plan’s list. It’s still on the Crops page.`); }
-  if (act === 'useSaved') { const id = b.dataset.id; S.editCrop = null; S.confirm = null; setOnPlan([id], true); if (getPage() === 'plan') { S.activeCrop = id; S.tool = 'crop'; } renderAll(); setStatus(`${cropById(id)?.name || 'Crop'} added to this plan’s list`); }
   if (act === 'cancelCrop') { S.editCrop = null; S.confirm = null; renderLibrary(); }
   if (act === 'askDeleteCrop') { S.confirm = 'crop'; renderLibrary(); }
   if (act === 'cancelConfirm') { S.confirm = null; renderLibrary(); }
@@ -1660,12 +1657,13 @@ const PIC = `<svg class="wl-pic" viewBox="0 0 400 120" aria-hidden="true">
 const GUIDE = [
   { t: 'Welcome to root', x: 'root is a crop planner for allotments and vegetable plots. Draw your plot to scale, plant crops in rows, plan the rotation from year to year and see what to sow each month.<br><br>This guide takes a minute. An example half plot is open behind it, so you can try things as you go.', pic: true },
   { t: 'Set up your plot', x: 'Use <b>Plot details</b> to name your plot and set its size in metres. To start your own, choose <b>+ New plot</b> in the plot list beside it. A full allotment plot is about 10 × 25 m.', at: '.gbox' },
-  { t: 'List the crops you want to grow', x: 'Before drawing anything, add every crop you plan to grow this year. Choose <b>Add crop</b> and start typing a name: pick from 125 crops and the family, spacing and sowing and harvest months fill in for you. Change anything to suit your varieties. Each plot has its own list, so a new plot starts empty. Crops you’ve saved before come up in the same search, and the <b>Crops page</b> lets you tick which ones are on this plot. Knowing what’s going in helps you size the beds.', at: '#addCropBtn' },
+  { t: 'List the crops you want to grow', x: 'Before drawing anything, add every crop you plan to grow this year. Choose <b>Add crop</b> and start typing a name: pick from 125 crops and the family, spacing and sowing and harvest months fill in for you. Change anything to suit your varieties. Each plot has its own list, so a new plot starts empty. To reuse crops from another plot or root’s starter crops, tick them on the <b>Crops page</b>. Knowing what’s going in helps you size the beds.', at: '#addCropBtn' },
   { t: 'Draw beds and blocks', x: 'Pick <b>Bed</b> <kbd>B</kbd> and drag on the plan to draw each bed. <b>Blocks</b> <kbd>F</kbd> draws paths, sheds, greenhouses, compost bays and water butts. Drag a corner to resize, use the arrow keys to nudge, and scroll to move round the plan.', at: '#tools' },
   { t: 'Plant your crops', x: 'Click a crop from your list in the library, then drag inside a bed. root works out the rows and the number of plants from the crop’s spacing, and shows where each plant goes. A click plants just one. The family chips and <b>On this plan</b> help you see what’s still to place.', at: '.side > .card' },
   { t: 'Rotate from year to year', x: '<b>Crop list &amp; rotation</b> lists what you’re growing and checks each bed against last year. When the season ends, <b>Plot details › Start next year’s plan</b> copies your beds, and root flags any bed growing the same family again.', at: '#navList' },
   { t: 'Know what to do each month', x: 'The <b>Sowing calendar</b> lists this month’s jobs (sow under cover, sow outside, plant out, harvest) and charts the whole year for the crops on your plan.', at: '#navCal' },
   { t: 'Your plans stay with you', x: 'Everything saves automatically in this browser on this computer, and nothing is sent anywhere. Download a backup now and then from <b>Preferences</b>, where you can also change the theme. Open this guide again any time with <b>Guide</b> at the top.', at: '#navPrefs' },
+  { t: 'Try it, then start your own', x: 'Play around with the example plot as much as you like: move beds, plant crops, look at the calendar. Nothing you do to it matters.<br><br>When you’re ready, choose <b>+ New plot…</b> from the plot menu at the top. Your new plot is a clean slate, with no beds and an empty crop list, ready for your own garden.', at: '#plotSel' },
 ];
 let WL = -1;
 function openWelcome(step = 0) {

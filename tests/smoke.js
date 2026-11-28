@@ -147,11 +147,11 @@ test('crops already in the library are marked, and botanical names match', async
   await app.page.click('#dbAdd');
   await app.page.fill('#ce-name', 'daucus');
   ok((await app.page.textContent('#ce-sug')).includes('Carrot'), 'found by botanical name');
-  ok((await app.page.textContent('#ce-sug')).includes('you have one saved'), 'carrot marked as already saved');
+  ok((await app.page.textContent('#ce-sug')).includes('already on this plan'), 'carrot marked as already on this plan');
   await app.page.fill('#ce-name', 'x'); ok(await app.page.isHidden('#ce-sug'), 'hidden for one letter');
 });
 
-test('a new plot starts with an empty crop list; saved crops can be added back', async open => {
+test('a new plot starts with an empty crop list; crops from other plans can be ticked back on', async open => {
   const app = await openNow(open);
   ok(await app.page.locator('#lib [data-cid]').count() > 0, 'older plot keeps every crop');
   await app.page.selectOption('#plotSel', '__new');
@@ -159,10 +159,13 @@ test('a new plot starts with an empty crop list; saved crops can be added back',
   eq(await app.page.locator('#lib [data-cid]').count(), 0, 'new plot list is empty');
   ok((await app.page.textContent('#lib')).includes('No crops on this plan'), 'empty list explains itself');
   await app.page.click('#addCropBtn'); await app.page.fill('#ce-name', 'carr');
-  ok((await app.page.textContent('#ce-sug')).includes('Your saved crops'), 'search offers saved crops');
-  await app.page.click('#ce-sug [data-act=useSaved]'); await app.page.waitForTimeout(200);
-  eq(await app.page.locator('#lib [data-cid]').count(), 1, 'saved crop added to this plot');
+  const sug = await app.page.textContent('#ce-sug');
+  ok(sug.includes('Edible Plant Database') && !sug.includes('already on this plan'), 'search offers only the database on a new plan');
+  await app.page.click('#ce-sug [data-sug="0"]'); await app.page.click('[data-act=saveCrop]'); await app.page.waitForTimeout(200);
+  eq(await app.page.locator('#lib [data-cid]').count(), 1, 'database crop added to this plot');
   await app.go('crops');
+  eq(await app.page.locator('#dbTable [data-on]').count(), 1, 'Crops page shows this plan’s crops');
+  await app.page.selectOption('#dbOn', '');
   const n = await app.page.locator('#dbTable [data-on]').count();
   eq(await app.page.locator('#dbTable [data-on]:checked').count(), 1, 'Crops page ticks the one on this plan');
   await app.page.locator('#dbTable [data-on]:not(:checked)').first().click(); await app.page.waitForTimeout(100);
@@ -211,7 +214,8 @@ test('welcome guide: shown on a first visit, steps through, highlights, and stay
   await app.page.keyboard.press('ArrowLeft');
   await app.page.keyboard.press('ArrowLeft');
   ok((await app.page.textContent('#wlH')).includes('Set up your plot'), 'arrow key goes back');
-  await app.page.click('[data-wl-go="7"]');
+  await app.page.click('[data-wl-go="8"]');
+  ok((await app.page.textContent('#wlH')).includes('start your own') && (await app.page.textContent('#welcomeBody')).includes('clean slate'), 'ends by sending you to a clean plot');
   eq(await app.page.textContent('#wlNext'), 'Start planning', 'last step');
   await app.page.click('#wlNext');
   ok(await app.page.isHidden('#welcome'), 'closed');
