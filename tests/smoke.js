@@ -195,6 +195,23 @@ test('dragging the plot edge changes its size; the top edge shifts everything do
   eq((await st()).d, g0.d, 'undo restores the size');
 });
 
+test('crops can be deleted straight from the Crops page, but not while planted', async open => {
+  const app = await openNow(open, { hash: '#crops' });
+  await app.page.selectOption('#dbOn', '');
+  const row = name => app.page.locator('#dbTable tbody tr', { hasText: name });
+  ok(await row('Carrot').locator('[data-del]').isDisabled(), 'planted crop cannot be deleted');
+  const before = await app.page.locator('#dbTable tbody tr').count();
+  const free = await app.page.locator('#dbTable [data-del]:not([disabled])').first();
+  const id = await free.getAttribute('data-del');
+  await free.click();
+  ok((await app.page.textContent('#dbTable')).includes('Delete '), 'asks to confirm in the row');
+  await app.page.keyboard.press('Escape');
+  eq(await app.page.locator('#dbTable [data-delyes]').count(), 0, 'Escape keeps it');
+  await app.page.locator(`#dbTable [data-del="${id}"]`).click(); await app.page.click('#dbTable [data-delyes]'); await app.page.waitForTimeout(300);
+  eq(await app.page.locator('#dbTable tbody tr').count(), before - 1, 'row gone');
+  eq(await app.store('crops/' + id), undefined, 'deleted from storage');
+});
+
 test('the crop data is credited in Preferences', async open => {
   const app = await openNow(open, { hash: '#preferences' });
   const t = await app.page.textContent('#prefsView');

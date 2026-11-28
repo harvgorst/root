@@ -172,6 +172,8 @@ label.checks { flex-wrap: nowrap; align-items: baseline; gap: 6px; }
 .sug .have { color: var(--accent); }
 .sug button:disabled { cursor: default; opacity: .6; background: none; }
 #dbTable .ck { width: 28px; text-align: center; }
+#dbTable td.acts { white-space: nowrap; }
+#dbTable .delq { font-size: 12.5px; color: var(--crit); margin-right: 2px; }
 .sug .ph { font-size: 11px; color: var(--muted); padding: 5px 9px; }
 .sug .src { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); padding: 6px 9px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
@@ -1050,6 +1052,13 @@ function renderCropEditor(el) {
     ${S.confirm === 'crop' ? `<div class="confirm">${used.length ? `${esc(c.name)} is planted in ${esc(used.map(plotLabel).join(', '))}. Remove it from those plans first.` : `Delete ${esc(c.name)} from your crops?`}<div class="row">${used.length ? '' : '<button class="btn danger sm" type="button" data-act="deleteCrop">Delete crop</button>'}<button class="btn sm" type="button" data-act="cancelConfirm">Keep it</button></div></div>` : ''}
     <p class="note" id="cropErr" style="margin:0;color:var(--crit)"></p>`;
 }
+async function deleteCrop(id) {
+  const c = cropById(id); if (!c || plotsUsing(id).length) return;
+  if (S.online) { try { await S.db.doc('crops/' + id).delete(); } catch (err) { const el = $('cropErr'); if (el) el.textContent = 'Couldn’t delete: ' + (err?.message || 'try again'); else setStatus('Couldn’t delete: ' + (err?.message || 'try again'), true); return; } }
+  S.crops = S.crops.filter(x => x.id !== id); if (S.activeCrop === id) S.activeCrop = null;
+  if (S.editCrop?.id === id) { S.editCrop = null; S.confirm = null; }
+  renderAll(); if (getPage() === 'crops') renderCrops(); setStatus(`Deleted ${c.name}`);
+}
 function plotsUsing(id) { const ps = S.plots.map(p => p.id === S.g?.id ? S.g : p); return ps.filter(p => p.crops.some(b => b.cropId === id)); }
 const plotLabel = p => (p.name || 'Untitled plot') + (p.year ? ' · ' + p.year : '');
 function renderPicker() {
@@ -1155,7 +1164,7 @@ function renderCrops() {
       <td class="n">${num(c.spacingCm)} × ${num(c.rowCm)} cm</td>
       <td>${esc([rangeText(c.sowIn) && rangeText(c.sowIn) + ' under cover', rangeText(c.sowOut) && rangeText(c.sowOut) + ' outside'].filter(Boolean).join('; '))}</td>
       <td>${esc(rangeText(c.plantOut))}</td><td>${esc(rangeText(c.harvest))}</td><td class="note">${esc(c.notes || '')}</td>
-      <td>${c.epd ? '<button type="button" class="linkbtn" data-act="aboutEpd" title="About the Edible Plant Database">Database</button>' : c.starter ? 'Starter' : 'Your own'}</td><td class="n">${usedIn(c.id) || '–'}</td><td class="n"><button class="btn sm" type="button" data-edit="${c.id}">Edit</button></td></tr>`).join('')}</tbody>`;
+      <td>${c.epd ? '<button type="button" class="linkbtn" data-act="aboutEpd" title="About the Edible Plant Database">Database</button>' : c.starter ? 'Starter' : 'Your own'}</td><td class="n">${usedIn(c.id) || '–'}</td><td class="n acts">${DB.del === c.id ? `<span class="delq">Delete ${esc(c.name)}?</span> <button class="btn sm danger solid" type="button" data-delyes="${c.id}">Delete</button> <button class="btn sm" type="button" data-delno>Keep</button>` : `<button class="btn sm" type="button" data-edit="${c.id}">Edit</button> <button class="btn sm danger" type="button" data-del="${c.id}"${usedIn(c.id) ? ` disabled title="Planted in ${esc(plotsUsing(c.id).map(plotLabel).join(', '))}: remove it from there first"` : ` title="Delete ${esc(c.name)} from all your crops"`} aria-label="Delete ${esc(c.name)}">Delete</button>`}</td></tr>`).join('')}</tbody>`;
 }
 
 /* ---------- preferences page ---------- */
@@ -1428,7 +1437,10 @@ $('dbTable').addEventListener('change', e => {
 });
 $('dbTable').addEventListener('click', e => {
   const sb = e.target.closest('[data-sort]'); if (sb) { const k = sb.dataset.sort; DB.dir = DB.sort === k ? -DB.dir : 1; DB.sort = k; renderCrops(); return; }
-  const ed = e.target.closest('[data-edit]'); if (ed) openCropEditor(ed.dataset.edit);
+  const ed = e.target.closest('[data-edit]'); if (ed) { DB.del = null; openCropEditor(ed.dataset.edit); return; }
+  const dl = e.target.closest('[data-del]'); if (dl) { DB.del = dl.dataset.del; renderCrops(); $('dbTable').querySelector('[data-delyes]')?.focus(); return; }
+  if (e.target.closest('[data-delno]')) { DB.del = null; renderCrops(); return; }
+  const dy = e.target.closest('[data-delyes]'); if (dy) { DB.del = null; deleteCrop(dy.dataset.delyes); }
 });
 $('epdModal').addEventListener('click', e => { if (e.target.id === 'epdModal') $('epdModal').hidden = true; });
 $('cropModal').addEventListener('click', e => { if (e.target.id === 'cropModal') { S.editCrop = null; S.confirm = null; renderLibrary(); } });
@@ -1521,12 +1533,7 @@ app.addEventListener('click', async e => {
   if (act === 'cancelCrop') { S.editCrop = null; S.confirm = null; renderLibrary(); }
   if (act === 'askDeleteCrop') { S.confirm = 'crop'; renderLibrary(); }
   if (act === 'cancelConfirm') { S.confirm = null; renderLibrary(); }
-  if (act === 'deleteCrop') {
-    const id = S.editCrop.id;
-    if (S.online) { try { await S.db.doc('crops/' + id).delete(); } catch (err) { $('cropErr').textContent = 'Couldn’t delete: ' + (err?.message || 'try again'); return; } }
-    S.crops = S.crops.filter(c => c.id !== id); if (S.activeCrop === id) S.activeCrop = null;
-    S.editCrop = null; S.confirm = null; renderAll();
-  }
+  if (act === 'deleteCrop') deleteCrop(S.editCrop.id);
   if (act === 'saveCrop') {
     const c = S.editCrop;
     if (!(c.name || '').trim()) { $('cropErr').textContent = 'Give the crop a name.'; return; }
@@ -1622,6 +1629,7 @@ document.addEventListener('keydown', e => {
   }
   if (!$('detailsModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeDetails(); } return; }
   if (!$('epdModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); $('epdModal').hidden = true; } return; }
+  if (DB.del && e.key === 'Escape') { e.preventDefault(); DB.del = null; renderCrops(); return; }
   if (!$('cropModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); S.editCrop = null; S.confirm = null; renderLibrary(); } return; }
   const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '');
   const key = e.key.toLowerCase();
