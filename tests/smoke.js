@@ -147,8 +147,30 @@ test('crops already in the library are marked, and botanical names match', async
   await app.page.click('#dbAdd');
   await app.page.fill('#ce-name', 'daucus');
   ok((await app.page.textContent('#ce-sug')).includes('Carrot'), 'found by botanical name');
-  ok((await app.page.textContent('#ce-sug')).includes('in your library'), 'carrot marked as already in the library');
+  ok((await app.page.textContent('#ce-sug')).includes('you have one saved'), 'carrot marked as already saved');
   await app.page.fill('#ce-name', 'x'); ok(await app.page.isHidden('#ce-sug'), 'hidden for one letter');
+});
+
+test('a new plot starts with an empty crop list; saved crops can be added back', async open => {
+  const app = await openNow(open);
+  ok(await app.page.locator('#lib [data-cid]').count() > 0, 'older plot keeps every crop');
+  await app.page.selectOption('#plotSel', '__new');
+  await app.page.fill('#np-name', 'Second plot'); await app.page.click('#newPlotForm [type=submit]'); await app.page.waitForTimeout(200);
+  eq(await app.page.locator('#lib [data-cid]').count(), 0, 'new plot list is empty');
+  ok((await app.page.textContent('#lib')).includes('No crops on this plan'), 'empty list explains itself');
+  await app.page.click('#addCropBtn'); await app.page.fill('#ce-name', 'carr');
+  ok((await app.page.textContent('#ce-sug')).includes('Your saved crops'), 'search offers saved crops');
+  await app.page.click('#ce-sug [data-act=useSaved]'); await app.page.waitForTimeout(200);
+  eq(await app.page.locator('#lib [data-cid]').count(), 1, 'saved crop added to this plot');
+  await app.go('crops');
+  const n = await app.page.locator('#dbTable [data-on]').count();
+  eq(await app.page.locator('#dbTable [data-on]:checked').count(), 1, 'Crops page ticks the one on this plan');
+  await app.page.locator('#dbTable [data-on]:not(:checked)').first().click(); await app.page.waitForTimeout(100);
+  eq(await app.page.locator('#dbTable [data-on]:checked').count(), 2, 'ticking adds another');
+  ok(n > 2, 'every saved crop listed on the Crops page');
+  await app.page.waitForTimeout(800);
+  const plots = await Promise.all((await app.keys('plots/')).map(k => app.store(k)));
+  eq(plots.find(p => p.name === 'Second plot')?.lib?.length, 2, 'list saved with the plot');
 });
 
 test('the crop data is credited in Preferences', async open => {
@@ -208,8 +230,8 @@ test('crops from the search are marked as coming from the database, with an Abou
   ok((await app.page.textContent('#cropModalBody')).includes('About the database'), 'form note links to About');
   await app.page.click('[data-act=saveCrop]'); await app.page.waitForTimeout(200);
   const row = app.page.locator('#dbTable tr', { hasText: 'Kohlrabi' });
-  eq((await row.locator('td').nth(8).textContent()).trim(), 'Database', 'Source column says Database');
-  eq((await app.page.locator('#dbTable tr', { hasText: 'Carrot' }).locator('td').nth(8).textContent()).trim(), 'Your own', 'other crops say Your own');
+  eq((await row.locator('td').nth(9).textContent()).trim(), 'Database', 'Source column says Database');
+  eq((await app.page.locator('#dbTable tr', { hasText: 'Carrot' }).locator('td').nth(9).textContent()).trim(), 'Your own', 'other crops say Your own');
   await app.go('plan');
   eq(await app.page.locator('#lib [data-cid] .ex.db').count(), 1, 'library tags the database crop');
 });
