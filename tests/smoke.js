@@ -29,6 +29,13 @@ test('first run fills the library and opens the example plot', async open => {
   eq(app.errors, [], 'no page errors');
 });
 
+test('the tab has an icon', async open => {
+  const app = await opener(open)({});
+  ok((await app.page.title()).startsWith('root'), 'it is root');
+  ok((await app.page.$eval('link[rel=icon]', l => l.href)).startsWith('data:image/svg+xml'), 'an SVG tab icon');
+  eq(await app.page.$eval('link[rel=icon]', l => new Promise(r => { const i = new Image(); i.onload = () => r(i.naturalWidth > 0); i.onerror = () => r(false); i.src = l.href; })), true, 'it draws');
+});
+
 test('drawing a bed and a crop block saves the plan', async open => {
   const app = await openNow(open);
   await app.page.click('[data-tool=bed]');
