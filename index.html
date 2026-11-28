@@ -145,6 +145,8 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 #map { flex: 1; width: 100%; min-height: 0; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
 #map text { font-family: var(--f-plan); text-rendering: geometricPrecision; }
 #map.panning, #map.panning * { cursor: grabbing !important; }
+#map .pedge { fill: transparent; stroke: transparent; vector-effect: non-scaling-stroke; }
+#map .pedge:hover { stroke: color-mix(in srgb, var(--accent) 35%, transparent); fill: color-mix(in srgb, var(--accent) 35%, transparent); }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--panel); overflow: auto; }
 .overlay .card { max-width: 420px; width: 100%; overflow: visible; }
 
@@ -853,8 +855,8 @@ function renderMap() {
   const W = g.width, D = g.depth, M = Math.max(W, D), pad = M * 0.07, fs = M / 55 / S.zoom, ls = fs * clamp(num(S.prefs.labelSize, 1), 0.5, 2);
   if (S.cx == null) { S.cx = W / 2; S.cy = D / 2; }
   S.cx = clamp(S.cx, -pad, W + pad); S.cy = clamp(S.cy, -pad, D + pad);
-  const vw = (W + pad * 2) / S.zoom, vh = (D + pad * 2) / S.zoom;
-  svg.setAttribute('viewBox', `${S.cx - vw / 2} ${S.cy - vh / 2} ${vw} ${vh}`);
+  const vw = (W + pad * 2) / S.zoom, vh = (D + pad * 2) / S.zoom, de = S.drag?.edge;
+  svg.setAttribute('viewBox', de ? `${de.vb[0] + de.sx} ${de.vb[1] + de.sy} ${de.vb[2]} ${de.vb[3]}` : `${S.cx - vw / 2} ${S.cy - vh / 2} ${vw} ${vh}`);
   let px = M / 900 / S.zoom; { const k = svg.getScreenCTM()?.a; if (k > 0) px = 1 / k; }
   $('zoomLbl').textContent = Math.round(S.zoom * 100) + '%';
   const P = S.prefs, parts = [], ns = 'vector-effect="non-scaling-stroke"';
@@ -870,6 +872,12 @@ function renderMap() {
     for (let x = 0; x <= W + 1e-6; x += lab) parts.push(`<text x="${x}" y="${-fs * 0.7}" font-size="${fs * 0.9}" text-anchor="middle" style="fill:var(--muted)" pointer-events="none">${x}</text>`);
     for (let y = lab; y <= D + 1e-6; y += lab) parts.push(`<text x="${-fs * 0.6}" y="${y + fs * 0.3}" font-size="${fs * 0.9}" text-anchor="end" style="fill:var(--muted)" pointer-events="none">${y}</text>`);
     parts.push(`<text x="${W}" y="${-fs * 0.7}" dx="${fs * 1.2}" font-size="${fs * 0.9}" style="fill:var(--muted)" pointer-events="none">m</text>`);
+  }
+  // the plot's edges and corners: drag them to change its size (under beds and crops, so those still take the click)
+  if (S.tool === 'select') {
+    const gw = px * 14, E = [['t', 0, 0, W, 0, 'ns'], ['b', 0, D, W, D, 'ns'], ['l', 0, 0, 0, D, 'ew'], ['r', W, 0, W, D, 'ew']];
+    for (const [e, x1, y1, x2, y2, cur] of E) parts.push(`<line class="pedge" data-kind="edge" data-e="${e}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" style="cursor:${cur}-resize" stroke-width="${gw}"><title>Drag to change the plot’s size</title></line>`);
+    for (const [e, x, y] of [['tl', 0, 0], ['tr', W, 0], ['br', W, D], ['bl', 0, D]]) parts.push(`<rect class="pedge" data-kind="edge" data-e="${e}" x="${x - gw}" y="${y - gw}" width="${gw * 2}" height="${gw * 2}" style="cursor:${e === 'tl' || e === 'br' ? 'nwse' : 'nesw'}-resize"><title>Drag to change the plot’s size</title></rect>`);
   }
   // features under beds, beds under crops
   const areas = [...g.areas].sort((a, b) => (a.kind === 'bed') - (b.kind === 'bed'));
@@ -909,6 +917,7 @@ function renderMap() {
   const d = S.drag;
   if (d?.draw && d.moved) { const r = normRect(d.start, d.cur); parts.push(`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" style="fill:var(--accent);stroke:var(--accent)" fill-opacity="0.1" stroke-width="1.5" stroke-dasharray="5 3" ${ns} pointer-events="none"/>`, txt(r.x + r.w / 2, r.y - fs * 0.4, fs * 0.7, `${fmtM(r.w)} × ${fmtM(r.h)} m`, '', 'fill:var(--accent)')); }
   if (d?.marquee && d.moved && !d.pan) { const r = normRect(d.start, d.cur); parts.push(`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" style="fill:var(--accent);stroke:var(--accent)" fill-opacity="0.08" stroke-width="1.5" stroke-dasharray="5 3" ${ns} pointer-events="none"/>`); }
+  if (d?.edge && d.moved) { const out = outsidePlot(); parts.push(txt(W / 2, -fs * 2.6, fs * 1.3, `${fmtM(W)} × ${fmtM(D)} m`, '', 'fill:var(--accent);font-weight:600'), out ? txt(W / 2, D + fs * 2.2, fs * 0.85, `${plural(out, 'thing')} outside the plot`, '', 'fill:var(--warn)') : ''); }
   if (d?.resize && d.moved) { const it = d.it; parts.push(txt(it.x + it.w / 2, it.y - fs * 0.4, fs * 0.7, `${fmtM(it.w)} × ${fmtM(it.h)} m`, '', 'fill:var(--accent)')); }
   const one = !S.multi.length && findSel();
   if (one) [[one.x, one.y], [one.x + one.w, one.y], [one.x + one.w, one.y + one.h], [one.x, one.y + one.h]].forEach(([x, y], i) =>
@@ -935,7 +944,7 @@ function renderTools() {
   $('tools').innerHTML = TOOLS.map(t => `<button type="button" class="tool" data-tool="${t.id}" aria-pressed="${S.tool === t.id}" title="${t.label} (${t.key})">${toolSwatch(t)}${t.label}</button>`).join('');
   const c = cropById(S.activeCrop);
   const h = {
-    select: 'Click to select; drag a corner to resize. Drag empty ground to move the page, Shift-drag to select several. Arrow keys nudge, Ctrl+D duplicates.',
+    select: 'Click to select; drag a corner to resize. Drag the plot’s edge or corner to change its size. Drag empty ground to move the page, Shift-drag to select several. Arrow keys nudge, Ctrl+D duplicates.',
     bed: 'Drag on the plan to draw a bed. Beds keep their place from year to year, so each one builds up a crop history for rotation.',
     feature: 'Blocks: drag on the plan to draw a path, shed, greenhouse, compost bay or water butt. Choose which in the bar above once it’s drawn.',
     crop: c ? `Planting ${cropName(c)}: drag inside a bed for a block of rows (${num(c.spacingCm)} cm apart, rows ${num(c.rowCm)} cm apart). A click plants one.` : 'Pick a crop from the library on the right first.',
@@ -1248,6 +1257,11 @@ svg.addEventListener('pointerdown', e => {
   if (e.button > 0) return;
   const p = toM(e), hit = e.target.closest('[data-kind]'), tool = S.tool, k = hit?.dataset.kind;
   if (k === 'north') { S.drag = { north: true, moved: false, before: JSON.stringify(S.g) }; renderMap(); return; }
+  if (k === 'edge') {
+    const vb = svg.getAttribute('viewBox').split(' ').map(Number);
+    S.drag = { edge: { e: hit.dataset.e, vb, sx: 0, sy: 0, W0: S.g.width, D0: S.g.depth, items: [...S.g.areas, ...S.g.crops].map(it => ({ it, ox: it.x, oy: it.y })) }, moved: false, before: JSON.stringify(S.g) };
+    return;
+  }
   if (k === 'handle') {
     const it = listOf(hit.dataset.of).find(x => x.id === hit.dataset.id); if (!it) return;
     const cs = [[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.h], [it.x, it.y + it.h]], f = cs[(+hit.dataset.i + 2) % 4];
@@ -1282,6 +1296,18 @@ svg.addEventListener('pointermove', e => {
     const st = e.shiftKey ? 15 : 1; let deg = Math.atan2(p.x - nx, -(p.y - ny)) * 180 / Math.PI; deg = ((Math.round(deg / st) * st) % 360 + 360) % 360;
     if (!d.moved) { pushBefore(d); d.moved = true; }
     S.g.north = deg; renderMapSoon(); renderPlotFields(); return;
+  }
+  if (d.edge) {
+    const E = d.edge, q = { x: p.x - E.sx, y: p.y - E.sy }; // pointer in the plot's frame before the drag
+    if (!d.moved) { pushBefore(d); d.moved = true; }
+    let w = E.W0, h = E.D0, sx = 0, sy = 0;
+    if (E.e.includes('r')) w = clamp(snap(q.x), 1, 200);
+    if (E.e.includes('l')) { w = clamp(E.W0 - snap(q.x), 1, 200); sx = w - E.W0; }
+    if (E.e.includes('b')) h = clamp(snap(q.y), 1, 200);
+    if (E.e.includes('t')) { h = clamp(E.D0 - snap(q.y), 1, 200); sy = h - E.D0; }
+    S.g.width = r2(w); S.g.depth = r2(h); E.sx = r2(sx); E.sy = r2(sy);
+    for (const m of E.items) { m.it.x = r2(m.ox + E.sx); m.it.y = r2(m.oy + E.sy); }
+    renderMapSoon(); renderPlotFields(); return;
   }
   if (d.resize) {
     if (!d.moved) { pushBefore(d); d.moved = true; }
@@ -1329,6 +1355,18 @@ function endDrag() {
   S.drag = null;
   if (d.pan) { svg.classList.remove('panning'); renderMap(); return; }
   if (d.north) { if (d.moved) savePlot(); renderMap(); return; }
+  if (d.edge) {
+    if (d.moved) {
+      // keep the same scale and spot on screen after the plot changes size
+      const E = d.edge, k = pxPerM(), r = svg.getBoundingClientRect(), W = S.g.width, D = S.g.depth, pad = Math.max(W, D) * 0.07;
+      const k1 = Math.min(r.width / (W + pad * 2), r.height / (D + pad * 2));
+      S.zoom = clamp(k / k1, ZMIN, ZMAX); S.cx = E.vb[0] + E.sx + E.vb[2] / 2; S.cy = E.vb[1] + E.sy + E.vb[3] / 2;
+      const out = outsidePlot();
+      S.note = `Plot is now ${fmtM(W)} × ${fmtM(D)} m${out ? `; ${plural(out, 'thing')} sit outside it` : ''}`;
+      savePlot(); renderAll();
+    } else renderMap();
+    return;
+  }
   if (d.draw) { finishDraw(d); renderMap(); return; }
   if (d.pending) {
     if (d.marquee && d.moved) {
@@ -1342,6 +1380,7 @@ function endDrag() {
   if (d.moved) { savePlot(); renderInspector(); }
   refreshDerived();
 }
+function outsidePlot() { const g = S.g; return [...g.areas, ...g.crops].filter(it => it.x < -0.001 || it.y < -0.001 || it.x + it.w > g.width + 0.001 || it.y + it.h > g.depth + 0.001).length; }
 function onUp(e) { ptrs.delete(e.pointerId); if (S.pinch) { if (ptrs.size < 2) S.pinch = null; return; } endDrag(); }
 svg.addEventListener('pointerup', onUp);
 svg.addEventListener('pointercancel', onUp);

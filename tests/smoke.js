@@ -173,6 +173,25 @@ test('a new plot starts with an empty crop list; saved crops can be added back',
   eq(plots.find(p => p.name === 'Second plot')?.lib?.length, 2, 'list saved with the plot');
 });
 
+test('dragging the plot edge changes its size; the top edge shifts everything down', async open => {
+  const app = await openNow(open);
+  const st = async () => { await app.page.waitForTimeout(900); const g = await app.store('plots/now'); return { w: g.width, d: g.depth, x: g.areas[0]?.x, y: g.areas[0]?.y }; };
+  const g0 = await st();
+  const box = async sel => app.page.locator(sel).boundingBox();
+  let r = await box('#map [data-e=r]');
+  await app.page.mouse.move(r.x + r.width / 2, r.y + r.height / 2); await app.page.mouse.down();
+  await app.page.mouse.move(r.x + r.width / 2 + 60, r.y + r.height / 2, { steps: 4 }); await app.page.mouse.up(); await app.page.waitForTimeout(200);
+  const g1 = await st();
+  ok(g1.w > g0.w && g1.d === g0.d && g1.x === g0.x, `right edge widens the plot (${g0.w} → ${g1.w})`);
+  r = await box('#map [data-e=t]');
+  await app.page.mouse.move(r.x + r.width / 2, r.y + r.height / 2); await app.page.mouse.down();
+  await app.page.mouse.move(r.x + r.width / 2, r.y + r.height / 2 - 50, { steps: 4 }); await app.page.mouse.up(); await app.page.waitForTimeout(200);
+  const g2 = await st();
+  ok(g2.d > g0.d && Math.abs((g2.y - g0.y) - (g2.d - g0.d)) < 0.02, 'top edge adds ground above and moves beds down with it');
+  await app.page.click('#undoBtn');
+  eq((await st()).d, g0.d, 'undo restores the size');
+});
+
 test('the crop data is credited in Preferences', async open => {
   const app = await openNow(open, { hash: '#preferences' });
   const t = await app.page.textContent('#prefsView');
