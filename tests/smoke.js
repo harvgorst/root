@@ -116,6 +116,40 @@ test('crops page edits a crop in a dialog', async open => {
   ok(await app.page.isHidden('#cropModal'), 'dialog closed');
 });
 
+test('typing a crop name offers crops from the Dundee data and fills in what is not set', async open => {
+  const app = await openNow(open, { hash: '#crops' });
+  await app.page.click('#dbAdd');
+  await app.page.fill('#ce-row', '40');   // set by hand, so it must be kept
+  await app.page.fill('#ce-name', 'parsn');
+  ok(!(await app.page.isHidden('#ce-sug')), 'suggestions shown');
+  ok((await app.page.textContent('#ce-sug')).includes('Parsnip'), 'parsnip offered');
+  await app.page.click('#ce-sug [data-sug="0"]');
+  eq(await app.page.inputValue('#ce-name'), 'Parsnip', 'name filled');
+  eq(await app.page.inputValue('#ce-group'), 'roots', 'family filled');
+  eq([await app.page.inputValue('#ce-sp'), await app.page.inputValue('#ce-row')], ['15', '40'], 'in-row spacing filled, row spacing kept');
+  eq([await app.page.inputValue('#ce-sowOut-0'), await app.page.inputValue('#ce-sowOut-1'), await app.page.inputValue('#ce-harvest-0'), await app.page.inputValue('#ce-harvest-1')], ['5', '6', '11', '2'], 'months filled');
+  ok((await app.page.textContent('#cropModalBody')).includes('Edible Plant Database'), 'source credited in the form');
+  await app.page.click('[data-act=saveCrop]'); await app.page.waitForTimeout(200);
+  const saved = await Promise.all((await app.keys('crops/')).map(k => app.store(k)));
+  const pars = saved.find(c => c.name === 'Parsnip');
+  ok(pars && pars.epd === true && !('_touched' in pars) && pars.rowCm === 40, 'saved with its source and without working fields');
+});
+
+test('crops already in the library are marked, and botanical names match', async open => {
+  const app = await openNow(open, { hash: '#crops' });
+  await app.page.click('#dbAdd');
+  await app.page.fill('#ce-name', 'daucus');
+  ok((await app.page.textContent('#ce-sug')).includes('Carrot'), 'found by botanical name');
+  ok((await app.page.textContent('#ce-sug')).includes('in your library'), 'carrot marked as already in the library');
+  await app.page.fill('#ce-name', 'x'); ok(await app.page.isHidden('#ce-sug'), 'hidden for one letter');
+});
+
+test('the crop data is credited in Preferences', async open => {
+  const app = await openNow(open, { hash: '#preferences' });
+  const t = await app.page.textContent('#prefsView');
+  ok(t.includes('Edible Plant Database') && t.includes('CC BY 4.0') && t.includes('GROW Consortium'), 'credit and licence shown');
+});
+
 for (const theme of ['drafting', 'eiderdown', 'woodwork', 'xp', 'root']) test(`every page renders in ${theme}`, async open => {
   const app = await openNow(open, { theme });
   for (const h of ['plan', 'list', 'calendar', 'crops', 'preferences']) { await app.go(h); await app.page.waitForTimeout(50); }
