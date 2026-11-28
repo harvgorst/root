@@ -162,8 +162,12 @@ test('welcome guide: shown on a first visit, steps through, highlights, and stay
   ok(!(await app.page.isHidden('#welcome')), 'guide open on first visit');
   ok((await app.page.textContent('#welcomeBody')).includes('Welcome to root'), 'first step');
   await app.page.click('#wlNext'); await app.page.click('#wlNext');
-  ok((await app.page.textContent('#wlH')).includes('Draw beds'), 'third step');
+  ok((await app.page.textContent('#wlH')).includes('List the crops'), 'third step is choosing crops, before drawing');
+  ok(await app.page.locator('#addCropBtn.wl-target').count() === 1, 'Add crop highlighted');
+  await app.page.click('#wlNext');
+  ok((await app.page.textContent('#wlH')).includes('Draw beds'), 'then drawing beds');
   ok(await app.page.locator('#tools.wl-target').count() === 1, 'tool strip highlighted');
+  await app.page.keyboard.press('ArrowLeft');
   await app.page.keyboard.press('ArrowLeft');
   ok((await app.page.textContent('#wlH')).includes('Set up your plot'), 'arrow key goes back');
   await app.page.click('[data-wl-go="7"]');
