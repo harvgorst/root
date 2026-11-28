@@ -157,6 +157,38 @@ test('the crop data is credited in Preferences', async open => {
   ok(t.includes('Edible Plant Database') && t.includes('CC BY 4.0') && t.includes('GROW Consortium'), 'credit and licence shown');
 });
 
+test('welcome guide: shown on a first visit, steps through, highlights, and stays closed after', async open => {
+  const app = await open({}, { welcome: true });
+  ok(!(await app.page.isHidden('#welcome')), 'guide open on first visit');
+  ok((await app.page.textContent('#welcomeBody')).includes('Welcome to root'), 'first step');
+  await app.page.click('#wlNext'); await app.page.click('#wlNext');
+  ok((await app.page.textContent('#wlH')).includes('Draw beds'), 'third step');
+  ok(await app.page.locator('#tools.wl-target').count() === 1, 'tool strip highlighted');
+  await app.page.keyboard.press('ArrowLeft');
+  ok((await app.page.textContent('#wlH')).includes('Set up your plot'), 'arrow key goes back');
+  await app.page.click('[data-wl-go="7"]');
+  eq(await app.page.textContent('#wlNext'), 'Start planning', 'last step');
+  await app.page.click('#wlNext');
+  ok(await app.page.isHidden('#welcome'), 'closed');
+  eq(await app.page.locator('.wl-target').count(), 0, 'highlight removed');
+  await app.reload();
+  ok(await app.page.isHidden('#welcome'), 'not shown again after a reload');
+  await app.page.click('#guideBtn');
+  ok(!(await app.page.isHidden('#welcome')), 'Guide button reopens it');
+  await app.page.keyboard.press('Escape');
+  ok(await app.page.isHidden('#welcome'), 'Escape closes it');
+});
+
+test('welcome guide: Skip closes it, and Preferences can show it again', async open => {
+  const app = await open({}, { welcome: true, hash: '#preferences' });
+  await app.page.click('[data-wl=skip]');
+  ok(await app.page.isHidden('#welcome'), 'skipped');
+  await app.go('preferences');
+  await app.page.click('[data-act=openGuide]');
+  ok(!(await app.page.isHidden('#welcome')), 'reopened from Preferences');
+  eq(await app.page.evaluate(() => location.hash), '#plan', 'guide shows the plan behind it');
+});
+
 for (const theme of ['drafting', 'eiderdown', 'woodwork', 'xp', 'root']) test(`every page renders in ${theme}`, async open => {
   const app = await openNow(open, { theme });
   for (const h of ['plan', 'list', 'calendar', 'crops', 'preferences']) { await app.go(h); await app.page.waitForTimeout(50); }

@@ -6,6 +6,7 @@ root is a single HTML file. Download `index.html` and open it in a browser (Chro
 
 ## What it does
 
+- **Welcome guide**: on a first visit, an eight-step guide walks through setting up a plot, drawing beds and blocks, planting crops, adding crops, rotation, the sowing calendar and backups, lifting each part of the screen it talks about. **Guide** at the top, or Preferences › Getting started, shows it again.
 - **Plan**: set the plot size, draw beds with the Bed tool, and paths, sheds, greenhouses, compost bays and water butts with the Blocks tool, all as rectangles, then drag out a crop inside a bed. The number of plants comes from the crop's spacing in the row and between rows, and the rows can be turned. A click plants a single plant. Moving a bed moves its crops with it. Undo and redo, arrow-key nudging, Ctrl+D to duplicate, Plant spacing to show where each plant goes, and Last year to show what grew in each bed the year before.
 - **Crop list & rotation**: crops, varieties, beds, rows, plant numbers and area, which copy straight into a spreadsheet. Each bed is compared with the previous year's plan on a four-course rotation (Peas & beans → Brassicas → Potatoes → Roots & onions). A bed that repeats a family is flagged on the plan and in the table, and each bed suggests what comes next.
 - **Sowing calendar**: this month's jobs (sow under cover, sow outside, plant out, harvest) and a year chart for every crop on the plan, or for the whole library.

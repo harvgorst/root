@@ -12,6 +12,8 @@ async function open(seed = {}, opts = {}) {
     await page.addInitScript({ path: path.join(__dirname, 'mock-runtime.js') });
     await page.addInitScript(seed => { for (const [k, v] of Object.entries(seed)) window.__mock.store.set(k, JSON.parse(JSON.stringify(v))); }, seed);
   }
+  // the welcome guide opens on a first visit; tests that aren't about it start as a returning visitor
+  if (!opts.welcome) await page.addInitScript(() => { try { localStorage.setItem('apl.welcome', '1'); } catch {} });
   // opts.theme stands for the theme chosen in SevenLayers, which root follows until one is picked here
   if (opts.theme) await page.addInitScript(t => { try { localStorage.setItem('gpm.theme', t); } catch {} }, opts.theme);
   const html = fs.readFileSync(path.join(ROOT, opts.file || 'index.html'), 'utf8');

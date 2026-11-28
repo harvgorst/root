@@ -173,6 +173,20 @@ label.checks { flex-wrap: nowrap; align-items: baseline; gap: 6px; }
 .modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); background: rgba(20, 18, 15, 0.38); }
 .modal .card { max-width: 460px; width: 100%; max-height: 92vh; overflow: auto; gap: 14px; padding: 22px; box-shadow: 0 18px 50px rgba(20, 18, 15, 0.25); }
 .modal h2 { font-size: 24px; }
+/* the welcome guide: one step at a time, lifting the part of the screen it talks about above the shade */
+#welcome { background: rgba(20, 18, 15, 0.45); }
+#welcome .card { max-width: 440px; gap: 12px; }
+.wl-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.wl-step { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wl-pic { display: block; width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: var(--ground); }
+.wl-text { margin: 0; line-height: 1.55; }
+.wl-text kbd { font: inherit; font-size: 12px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--panel); }
+.wl-dots { display: flex; gap: 6px; justify-content: center; }
+.wl-dots button { width: 8px; height: 8px; padding: 0; border-radius: 50%; border: 0; background: var(--line); cursor: pointer; }
+.wl-dots button[aria-current=step] { background: var(--accent); }
+.wl-nav { display: flex; align-items: center; gap: 8px; }
+.wl-target { position: relative; z-index: 31; outline: 2px solid var(--accent); outline-offset: 3px; box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 25%, transparent); animation: wlpulse 1.6s ease-in-out infinite; }
+@keyframes wlpulse { 50% { box-shadow: 0 0 0 11px color-mix(in srgb, var(--accent) 10%, transparent); } }
 
 .calview > * { flex-shrink: 0; }
 .calview { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 20px; overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 16px; }
@@ -466,7 +480,7 @@ html[data-skin=root] ::selection { background: var(--accent); color: var(--accen
     <h1><span class="jp" aria-hidden="true">菜園</span><span class="brand"><span class="bn">root</span><span class="tag">crop planner</span></span></h1>
     <nav class="tabs" aria-label="Pages"><button type="button" id="navPlan" aria-pressed="true"><span class="jp" aria-hidden="true">計画</span>Plan</button><button type="button" id="navList" aria-pressed="false"><span class="jp" aria-hidden="true">輪作</span>Crop list &amp; rotation</button><button type="button" id="navCal" aria-pressed="false"><span class="jp" aria-hidden="true">種暦</span>Sowing calendar</button><button type="button" id="navCrops" aria-pressed="false"><span class="jp" aria-hidden="true">野菜</span>Crops</button><button type="button" id="navPrefs" aria-pressed="false"><span class="jp" aria-hidden="true">設定</span>Preferences</button></nav>
     <div class="spacer"></div>
-    <div class="gbox"><select id="plotSel" aria-label="Choose a plot"></select><button class="btn sm" id="detailsBtn" type="button">Plot details</button></div>
+    <div class="gbox"><select id="plotSel" aria-label="Choose a plot"></select><button class="btn sm" id="detailsBtn" type="button">Plot details</button><button class="btn sm" id="guideBtn" type="button" title="How to use root">Guide</button></div>
     <span id="status">Connecting…</span>
   </header>
 
@@ -514,6 +528,7 @@ html[data-skin=root] ::selection { background: var(--accent); color: var(--accen
   </div>
 </div>
 
+<div class="modal" id="welcome" hidden role="dialog" aria-modal="true" aria-labelledby="wlH"><div class="card" id="welcomeBody"></div></div>
 <div class="modal" id="cropModal" hidden role="dialog" aria-modal="true" aria-label="Edit crop"><div class="card" id="cropModalBody" style="max-width:520px"></div></div>
 <div class="modal" id="detailsModal" hidden role="dialog" aria-modal="true" aria-labelledby="detailsH">
   <div class="card">
@@ -1125,6 +1140,10 @@ function renderPrefs() {
         <div class="rolecols">${Object.entries(GROUPS).map(([k, l]) => `<label class="rolecol"><input type="color" id="pf-fc-${k}" data-fam-col="${k}" value="${famCol(k)}"><span>${esc(l)}</span></label>`).join('')}</div>
         <div class="row"><button class="btn sm" type="button" data-act="resetFamCols">Reset colours</button></div>
       </fieldset>
+      <fieldset class="pref"><legend>Getting started</legend>
+        <p class="note" style="margin:0">A short guide to drawing your plot, planting crops, rotation and the sowing calendar. It also opens with <b>Guide</b> at the top of every page.</p>
+        <div class="row"><button class="btn sm" type="button" data-act="openGuide">Show the guide again</button></div>
+      </fieldset>
       <fieldset class="pref"><legend>Crop data</legend>
         <p class="note" style="margin:0">root starts with ${STARTER ? Object.keys(STARTER.crops).length : 0} common crops, with typical UK spacings and months. Change any of them to suit your soil and varieties.</p>
         <p class="note" style="margin:0">When you add a crop, ${LOOKUP.length} more are offered as you type its name. Their sowing, planting and harvest months come from the <a href="https://doi.org/10.15132/10000157" target="_blank" rel="noopener">Edible Plant Database</a> by M. Woods, A. Cobley, S. R. Verrall, R. Neilson, N. van der Velden, G. Hager and the GROW Consortium (GROW Observatory, University of Dundee, 2020), used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. root uses its Atlantic Central calendar, which covers most of the UK, and splits its sow outdoors or plant out column into the two. Names, crop families, spacings and a few corrected botanical names are root’s own, from general UK practice.</p>
@@ -1433,6 +1452,7 @@ app.addEventListener('click', async e => {
   }
   if (act === 'resetPrefs') { S.prefs = { ...PREF_DEFAULTS, theme: S.prefs.theme }; applyFamColours(); savePrefs(); renderPrefs(); renderTools(); }
   if (act === 'resetFamCols') { S.prefs.famColors = {}; applyFamColours(); savePrefs(); renderPrefs(); }
+  if (act === 'openGuide') openWelcome(0);
   if (act === 'addStarter') { const n = await addStarterCrops(); renderPrefs(); setStatus(n ? `Added ${plural(n, 'starter crop')}` : 'Saved'); }
   if (act === 'bkpPlot') downloadBackup('plot');
   if (act === 'bkpCrops') downloadBackup('crops');
@@ -1503,6 +1523,12 @@ $('dangerBox').addEventListener('click', async e => {
   }
 });
 document.addEventListener('keydown', e => {
+  if (!$('welcome').hidden) {
+    if (e.key === 'Escape') { e.preventDefault(); closeWelcome(); }
+    else if (e.key === 'ArrowRight' && WL < GUIDE.length - 1) { e.preventDefault(); WL++; renderWelcome(); }
+    else if (e.key === 'ArrowLeft' && WL > 0) { e.preventDefault(); WL--; renderWelcome(); }
+    return;
+  }
   if (!$('detailsModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeDetails(); } return; }
   if (!$('cropModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); S.editCrop = null; S.confirm = null; renderLibrary(); } return; }
   const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '');
@@ -1527,6 +1553,57 @@ document.addEventListener('keydown', e => {
 });
 for (const [id, h] of [['navPlan', 'plan'], ['navList', 'list'], ['navCal', 'calendar'], ['navCrops', 'crops'], ['navPrefs', 'preferences']]) $(id).addEventListener('click', () => { location.hash = h; });
 window.addEventListener('hashchange', applyPage);
+
+/* ---------- welcome guide ---------- */
+const PIC = `<svg class="wl-pic" viewBox="0 0 400 120" aria-hidden="true">
+  <rect x="10" y="10" width="380" height="100" rx="3" style="fill:var(--ground);stroke:var(--ink)" stroke-width="1.5"/>
+  ${[0, 1, 2, 3, 4].map(i => `<rect x="${22 + i * 52}" y="20" width="40" height="66" rx="2" style="fill:var(--soil);stroke:var(--soil-edge)"/>`).join('')}
+  ${[['legumes', 0], ['brassicas', 1], ['potatoes', 2], ['roots', 3], ['alliums', 4]].map(([g, i]) => [0, 1, 2].map(r => [0, 1, 2, 3, 4].map(c => `<circle cx="${30 + i * 52 + r * 12}" cy="${28 + c * 12.5}" r="${g === 'roots' || g === 'alliums' ? 2.6 : 4}" style="fill:var(--g-${g})" opacity=".85"/>`).join('')).join('')).join('')}
+  <rect x="286" y="20" width="90" height="38" style="fill:var(--ft-shed);stroke:var(--ft-edge)"/><rect x="286" y="64" width="40" height="22" style="fill:var(--ft-compost);stroke:var(--ft-edge)"/>
+  <rect x="10" y="92" width="380" height="12" style="fill:var(--ft-path)"/>
+</svg>`;
+const GUIDE = [
+  { t: 'Welcome to root', x: 'root is a crop planner for allotments and vegetable plots. Draw your plot to scale, plant crops in rows, plan the rotation from year to year and see what to sow each month.<br><br>This guide takes a minute. An example half plot is open behind it, so you can try things as you go.', pic: true },
+  { t: 'Set up your plot', x: 'Use <b>Plot details</b> to name your plot and set its size in metres. To start your own, choose <b>+ New plot</b> in the plot list beside it. A full allotment plot is about 10 × 25 m.', at: '.gbox' },
+  { t: 'Draw beds and blocks', x: 'Pick <b>Bed</b> <kbd>B</kbd> and drag on the plan to draw each bed. <b>Blocks</b> <kbd>F</kbd> draws paths, sheds, greenhouses, compost bays and water butts. Drag a corner to resize, use the arrow keys to nudge, and scroll to move round the plan.', at: '#tools' },
+  { t: 'Plant your crops', x: 'Click a crop in the library, then drag inside a bed. root works out the rows and the number of plants from the crop’s spacing, and shows where each plant goes. A click plants just one. Moving a bed takes its crops with it.', at: '.side > .card' },
+  { t: 'Add your own crops', x: '<b>Add crop</b> opens a short form. Start typing a name and choose from 125 crops: the family, spacing and sowing and harvest months fill in for you. Change anything to suit your plot.', at: '#addCropBtn' },
+  { t: 'Rotate from year to year', x: '<b>Crop list &amp; rotation</b> lists what you’re growing and checks each bed against last year. When the season ends, <b>Plot details › Start next year’s plan</b> copies your beds, and root flags any bed growing the same family again.', at: '#navList' },
+  { t: 'Know what to do each month', x: 'The <b>Sowing calendar</b> lists this month’s jobs (sow under cover, sow outside, plant out, harvest) and charts the whole year for the crops on your plan.', at: '#navCal' },
+  { t: 'Your plans stay with you', x: 'Everything saves automatically in this browser on this computer, and nothing is sent anywhere. Download a backup now and then from <b>Preferences</b>, where you can also change the theme. Open this guide again any time with <b>Guide</b> at the top.', at: '#navPrefs' },
+];
+let WL = -1;
+function openWelcome(step = 0) {
+  if (getPage() !== 'plan') location.hash = 'plan';
+  S.editCrop = null; S.confirm = null; closeDetails(); renderLibrary();
+  WL = step; $('welcome').hidden = false; renderWelcome();
+}
+function closeWelcome() {
+  WL = -1; $('welcome').hidden = true; store.set('apl.welcome', '1');
+  for (const el of document.querySelectorAll('.wl-target')) el.classList.remove('wl-target');
+  $('guideBtn').focus();
+}
+function renderWelcome() {
+  const g = GUIDE[WL], last = WL === GUIDE.length - 1;
+  for (const el of document.querySelectorAll('.wl-target')) el.classList.remove('wl-target');
+  const tgt = g.at && document.querySelector(g.at); if (tgt) tgt.classList.add('wl-target');
+  $('welcomeBody').innerHTML = `<div class="wl-top"><span class="wl-step">${WL + 1} of ${GUIDE.length}</span>${last ? '' : '<button class="btn sm" type="button" data-wl="skip">Skip the guide</button>'}</div>
+    <h2 id="wlH">${g.t}</h2>${g.pic ? PIC : ''}<p class="wl-text">${g.x}</p>
+    <div class="wl-dots" role="group" aria-label="Steps">${GUIDE.map((s, i) => `<button type="button" data-wl-go="${i}" aria-label="Step ${i + 1}: ${esc(s.t)}"${i === WL ? ' aria-current="step"' : ''}></button>`).join('')}</div>
+    <div class="wl-nav">${WL ? '<button class="btn" type="button" data-wl="back">Back</button>' : ''}<span class="spacer"></span><button class="btn primary" type="button" data-wl="next" id="wlNext">${last ? 'Start planning' : WL ? 'Next' : 'Show me round'}</button></div>`;
+  setTimeout(() => $('wlNext')?.focus(), 0);
+}
+$('welcome').addEventListener('click', e => {
+  const b = e.target.closest('[data-wl], [data-wl-go]');
+  if (!b) { if (e.target.id === 'welcome') closeWelcome(); return; }
+  if (b.dataset.wlGo != null) { WL = +b.dataset.wlGo; renderWelcome(); return; }
+  const a = b.dataset.wl;
+  if (a === 'skip') closeWelcome();
+  else if (a === 'back') { WL = Math.max(0, WL - 1); renderWelcome(); }
+  else if (WL >= GUIDE.length - 1) closeWelcome();
+  else { WL++; renderWelcome(); }
+});
+$('guideBtn').addEventListener('click', () => openWelcome(0));
 
 /* ---------- data ---------- */
 const MONTH_OK = v => Number.isInteger(+v) && +v >= 1 && +v <= 12;
@@ -1564,7 +1641,7 @@ async function init() {
   S.db = db; S.online = true; setStatus('Loading…');
   if (empty) { try { await seedFirstRun(db); } catch {} }
   let gotCrops = false, gotPlots = false;
-  const ready = () => { if (gotCrops && gotPlots && !S.loaded) { S.loaded = true; setStatus(persistent ? 'Saved' : 'Not saved: this browser is blocking storage' + (S.storageError ? ' (' + S.storageError + ')' : ''), !persistent); renderAll(); if (getPage() === 'preferences') renderPrefs(); } };
+  const ready = () => { if (gotCrops && gotPlots && !S.loaded) { S.loaded = true; setStatus(persistent ? 'Saved' : 'Not saved: this browser is blocking storage' + (S.storageError ? ' (' + S.storageError + ')' : ''), !persistent); renderAll(); if (getPage() === 'preferences') renderPrefs(); if (!store.get('apl.welcome')) openWelcome(); } };
   db.doc('settings/prefs').onSnapshot(snap => {
     if (prefTimer) return;
     S.prefs = { ...PREF_DEFAULTS, ...(snap.exists ? snap.data() : { theme: document.documentElement.dataset.skin }) };
