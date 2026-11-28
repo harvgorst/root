@@ -19,6 +19,8 @@ On first opening it is filled with 31 common crops (typical UK spacings and mont
 
 ## Crop data
 
+Crops added through the search in Add crop are marked **Database** in the library and in the Crops page's Source column, and the dropdown, the crop form and Preferences each link to a short **About the Edible Plant Database** panel.
+
 The sowing, planting and harvest months in the crop lookup come from the **Edible Plant Database** by M. Woods, A. Cobley, S. R. Verrall, R. Neilson, N. van der Velden, G. Hager and the GROW Consortium (GROW Observatory, University of Dundee, 2020), https://doi.org/10.15132/10000157, used under the [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) licence. root uses its Atlantic Central calendar, which covers most of the UK, and splits its "sow outdoors / plant out" column into sowing outside or planting out. The crop names, families, spacings and a few corrected botanical names are root's own, from general UK practice, and are not part of that database.
 
 ## Files

@@ -169,6 +169,14 @@ label.checks { flex-wrap: nowrap; align-items: baseline; gap: 6px; }
 .sug .have, .sug button > .note { flex: none; white-space: nowrap; font-size: 12px; }
 .sug .have { color: var(--accent); }
 .sug .ph { font-size: 11px; color: var(--muted); padding: 5px 9px; }
+.sug .src { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--muted); padding: 6px 9px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.linkbtn { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
+.ex.db { color: var(--accent); }
+#epdModal { z-index: 35; }
+#epdModal a { color: var(--accent); }
+.sug .src .linkbtn { display: inline; flex: none; padding: 0; border: 0; background: none; font-size: inherit; color: var(--accent); }
+.sug .src .linkbtn:hover { background: none; }
+.epd-facts { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; line-height: 1.5; }
 
 .modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); background: rgba(20, 18, 15, 0.38); }
 .modal .card { max-width: 460px; width: 100%; max-height: 92vh; overflow: auto; gap: 14px; padding: 22px; box-shadow: 0 18px 50px rgba(20, 18, 15, 0.25); }
@@ -529,6 +537,18 @@ html[data-skin=root] ::selection { background: var(--accent); color: var(--accen
 </div>
 
 <div class="modal" id="welcome" hidden role="dialog" aria-modal="true" aria-labelledby="wlH"><div class="card" id="welcomeBody"></div></div>
+<div class="modal" id="epdModal" hidden role="dialog" aria-modal="true" aria-labelledby="epdH"><div class="card" style="max-width:520px">
+  <div class="card-h"><h2 id="epdH">The Edible Plant Database</h2><button class="btn sm" type="button" data-act="closeEpd">Done</button></div>
+  <p style="margin:0;line-height:1.55">The crops you find by searching in <b>Add crop</b> come from the Edible Plant Database, made by the <b>GROW Observatory</b>: a European citizen-science project on growing food, led by the University of Dundee and funded by the EU’s Horizon 2020 programme.</p>
+  <ul class="epd-facts">
+    <li>It brings together planting, harvesting and growing advice for <b>146 edible plants</b>, with sowing and harvest calendars for <b>12 European climate zones</b>.</li>
+    <li>The calendars were gathered from seed packets, growing guides and the literature, and checked through regular polls of growers in the GROW community.</li>
+    <li>It was built for the GROW app, to answer “what can I plant now?” for a grower’s own location. It was published in 2020.</li>
+    <li>root uses its <b>Atlantic Central</b> calendar, the zone covering most of the UK, and splits its “sow outdoors / plant out” column into sowing outside or planting out.</li>
+    <li>The database doesn’t give spacing, and some of its families are odd, so root’s crop names, families and spacings come from general UK practice, and a few botanical names are corrected.</li>
+  </ul>
+  <p class="note" style="margin:0">Edible Plant Database, by M. Woods, A. Cobley, S. R. Verrall, R. Neilson, N. van der Velden, G. Hager and the GROW Consortium, University of Dundee, 2020: <a href="https://doi.org/10.15132/10000157" target="_blank" rel="noopener">https://doi.org/10.15132/10000157</a>. Used under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">Creative Commons Attribution 4.0</a> licence.</p>
+</div></div>
 <div class="modal" id="cropModal" hidden role="dialog" aria-modal="true" aria-label="Edit crop"><div class="card" id="cropModalBody" style="max-width:520px"></div></div>
 <div class="modal" id="detailsModal" hidden role="dialog" aria-modal="true" aria-labelledby="detailsH">
   <div class="card">
@@ -930,7 +950,7 @@ function renderLibrary() {
   $('lib').innerHTML = Object.keys(GROUPS).map(k => {
     const cs = list.filter(c => c.group === k).sort((a, b) => a.name.localeCompare(b.name));
     if (!cs.length) return '';
-    return `<li class="lh" aria-hidden="true" style="--lc:${famCol(k)}">${esc(GROUPS[k])}${k in ROT ? '' : ' · outside the rotation'}</li>` + cs.map(c => `<li data-cid="${c.id}" aria-selected="${S.activeCrop === c.id}" title="Click to plant · double-click to find it on the plan">${famSw(c.group)}<span class="nm"><b>${esc(c.name)}</b><i>${esc(c.variety || [rangeText(c.sowIn || c.sowOut || c.plantOut) && 'sow ' + rangeText(c.sowIn || c.sowOut || c.plantOut), rangeText(c.harvest) && 'pick ' + rangeText(c.harvest)].filter(Boolean).join(' · '))}</i></span><span class="meta">${num(c.spacingCm)} × ${num(c.rowCm)} cm${used.has(c.id) ? '<br>on plan' : ''}</span><button type="button" class="btn sm" data-edit="${c.id}" aria-label="Edit ${esc(c.name)}">Edit</button></li>`).join('');
+    return `<li class="lh" aria-hidden="true" style="--lc:${famCol(k)}">${esc(GROUPS[k])}${k in ROT ? '' : ' · outside the rotation'}</li>` + cs.map(c => `<li data-cid="${c.id}" aria-selected="${S.activeCrop === c.id}" title="Click to plant · double-click to find it on the plan">${famSw(c.group)}<span class="nm"><b>${esc(c.name)}${c.epd ? '<span class="ex db" title="Added from the Edible Plant Database">Database</span>' : ''}</b><i>${esc(c.variety || [rangeText(c.sowIn || c.sowOut || c.plantOut) && 'sow ' + rangeText(c.sowIn || c.sowOut || c.plantOut), rangeText(c.harvest) && 'pick ' + rangeText(c.harvest)].filter(Boolean).join(' · '))}</i></span><span class="meta">${num(c.spacingCm)} × ${num(c.rowCm)} cm${used.has(c.id) ? '<br>on plan' : ''}</span><button type="button" class="btn sm" data-edit="${c.id}" aria-label="Edit ${esc(c.name)}">Edit</button></li>`).join('');
   }).join('');
 }
 function opt(map, v) { return Object.entries(map).map(([k, l]) => `<option value="${k}"${k === v ? ' selected' : ''}>${esc(l)}</option>`).join(''); }
@@ -988,7 +1008,7 @@ function monthSel(id, key, idx, v) { return `<select id="${id}" data-cm="${key}"
 function renderCropEditor(el) {
   const c = S.editCrop, used = plotsUsing(c.id);
   const mr = (k, l) => { const r = c[k] || []; return `<div class="field"><span>${l}</span><div class="mrange">${monthSel('ce-' + k + '-0', k, 0, r[0])}<span>to</span>${monthSel('ce-' + k + '-1', k, 1, r[1])}</div></div>`; };
-  el.innerHTML = `<div class="card-h"><h2 style="font-size:17px">${c._new ? 'New crop' : 'Edit crop'}</h2>${c.starter ? '<span class="ex">Starter</span>' : ''}</div>
+  el.innerHTML = `<div class="card-h"><h2 style="font-size:17px">${c._new ? 'New crop' : 'Edit crop'}</h2>${c.starter ? '<span class="ex">Starter</span>' : c.epd ? '<span class="ex db">Database</span>' : ''}</div>
     <div class="fgrp">The crop</div>
     <label class="field"><span>Crop</span><input id="ce-name" type="text" data-c="name" value="${esc(c.name)}" placeholder="Start typing, e.g. Carrot" autocomplete="off"></label>
     <div class="sug" id="ce-sug" hidden role="listbox" aria-label="Crops to fill in from"></div>
@@ -999,7 +1019,7 @@ function renderCropEditor(el) {
     <p class="note" style="margin:-4px 0 0">In the row, then between rows.</p>
     <div class="fgrp">When</div>
     ${mr('sowIn', 'Sow under cover')}${mr('sowOut', 'Sow outside')}${mr('plantOut', 'Plant out')}${mr('harvest', 'Harvest')}
-    ${c.epd ? '<p class="note" style="margin:0">Months from the Edible Plant Database (GROW Observatory, University of Dundee). Change them to suit your plot.</p>' : ''}
+    ${c.epd ? '<p class="note" style="margin:0">Added from the Edible Plant Database (GROW Observatory, University of Dundee): its months, with root’s spacing and family. Change them to suit your plot. <button type="button" class="linkbtn" data-act="aboutEpd">About the database</button></p>' : ''}
     <p class="note" style="margin:0">Leave a month range blank if it doesn’t apply. Ranges can run over the new year, such as Oct to Feb.</p>
     <label class="field" style="align-items:start"><span style="padding-top:4px">Notes</span><textarea id="ce-notes" rows="2" data-c="notes" placeholder="e.g. net against carrot fly">${esc(c.notes || '')}</textarea></label>
     <div class="row"><button class="btn primary" type="button" data-act="saveCrop">Save crop</button><button class="btn" type="button" data-act="cancelCrop">Cancel</button>${c._new ? '' : '<span class="spacer"></span><button class="btn danger" type="button" data-act="askDeleteCrop">Delete</button>'}</div>
@@ -1095,18 +1115,18 @@ function renderCrops() {
   const usedIn = id => plotsUsing(id).length;
   let rows = S.crops.filter(c => (!DB.fam || c.group === DB.fam) && (!q || [c.name, c.variety, GROUPS[c.group], c.notes].join(' ').toLowerCase().includes(q)));
   const firstM = r => monthsOf(r)[0] || 99;
-  const key = { name: c => c.name.toLowerCase(), family: c => order.indexOf(c.group) * 1000 + 0, spacing: c => num(c.spacingCm), sow: c => Math.min(firstM(c.sowIn), firstM(c.sowOut), firstM(c.plantOut)), harvest: c => firstM(c.harvest), plots: c => usedIn(c.id) }[DB.sort];
+  const key = { name: c => c.name.toLowerCase(), family: c => order.indexOf(c.group) * 1000 + 0, spacing: c => num(c.spacingCm), sow: c => Math.min(firstM(c.sowIn), firstM(c.sowOut), firstM(c.plantOut)), harvest: c => firstM(c.harvest), plots: c => usedIn(c.id), source: c => c.epd ? 0 : c.starter ? 1 : 2 }[DB.sort];
   rows.sort((a, b) => { const x = key(a), y = key(b); return ((x < y ? -1 : x > y ? 1 : 0) * DB.dir) || a.name.localeCompare(b.name); });
   const th = (k, l, n) => `<th${n ? ' class="n"' : ''}><button type="button" class="sortb" data-sort="${k}">${l}${DB.sort === k ? (DB.dir > 0 ? ' ↑' : ' ↓') : ''}</button></th>`;
   $('dbCount').textContent = `${rows.length} of ${S.crops.length} crops`;
   $('dbTable').innerHTML = !S.crops.length ? `<tbody><tr><td class="empty">${S.loaded ? 'No crops yet. Use Add crop to start your library.' : 'Loading your crops…'}</td></tr></tbody>`
     : !rows.length ? '<tbody><tr><td class="empty">No crops match those filters.</td></tr></tbody>'
-    : `<thead><tr>${th('name', 'Crop')}<th>Variety</th>${th('family', 'Family')}${th('spacing', 'Spacing', 1)}${th('sow', 'Sow')}<th>Plant out</th>${th('harvest', 'Harvest')}<th>Notes</th>${th('plots', 'Plans', 1)}<th></th></tr></thead><tbody>${rows.map(c => `<tr style="--lc:${gcol(c)}">
+    : `<thead><tr>${th('name', 'Crop')}<th>Variety</th>${th('family', 'Family')}${th('spacing', 'Spacing', 1)}${th('sow', 'Sow')}<th>Plant out</th>${th('harvest', 'Harvest')}<th>Notes</th>${th('source', 'Source')}${th('plots', 'Plans', 1)}<th></th></tr></thead><tbody>${rows.map(c => `<tr style="--lc:${gcol(c)}">
       <td>${famSw(c.group)} <span class="cnm">${esc(c.name)}</span></td><td><i>${esc(c.variety || '')}</i></td><td>${esc(GROUPS[c.group])}</td>
       <td class="n">${num(c.spacingCm)} × ${num(c.rowCm)} cm</td>
       <td>${esc([rangeText(c.sowIn) && rangeText(c.sowIn) + ' under cover', rangeText(c.sowOut) && rangeText(c.sowOut) + ' outside'].filter(Boolean).join('; '))}</td>
       <td>${esc(rangeText(c.plantOut))}</td><td>${esc(rangeText(c.harvest))}</td><td class="note">${esc(c.notes || '')}</td>
-      <td class="n">${usedIn(c.id) || '–'}</td><td class="n"><button class="btn sm" type="button" data-edit="${c.id}">Edit</button></td></tr>`).join('')}</tbody>`;
+      <td>${c.epd ? '<button type="button" class="linkbtn" data-act="aboutEpd" title="About the Edible Plant Database">Database</button>' : c.starter ? 'Starter' : 'Your own'}</td><td class="n">${usedIn(c.id) || '–'}</td><td class="n"><button class="btn sm" type="button" data-edit="${c.id}">Edit</button></td></tr>`).join('')}</tbody>`;
 }
 
 /* ---------- preferences page ---------- */
@@ -1147,6 +1167,7 @@ function renderPrefs() {
       <fieldset class="pref"><legend>Crop data</legend>
         <p class="note" style="margin:0">root starts with ${STARTER ? Object.keys(STARTER.crops).length : 0} common crops, with typical UK spacings and months. Change any of them to suit your soil and varieties.</p>
         <p class="note" style="margin:0">When you add a crop, ${LOOKUP.length} more are offered as you type its name. Their sowing, planting and harvest months come from the <a href="https://doi.org/10.15132/10000157" target="_blank" rel="noopener">Edible Plant Database</a> by M. Woods, A. Cobley, S. R. Verrall, R. Neilson, N. van der Velden, G. Hager and the GROW Consortium (GROW Observatory, University of Dundee, 2020), used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. root uses its Atlantic Central calendar, which covers most of the UK, and splits its sow outdoors or plant out column into the two. Names, crop families, spacings and a few corrected botanical names are root’s own, from general UK practice.</p>
+        <div class="row"><button class="btn sm" type="button" data-act="aboutEpd">About the Edible Plant Database</button></div>
         <div class="row"><button class="btn sm" type="button" data-act="addStarter"${missing ? '' : ' disabled'}>${missing ? `Add back ${plural(missing, 'starter crop')} you’ve deleted` : 'All the starter crops are in your library'}</button></div>
       </fieldset>
       <fieldset class="pref"><legend>Backup</legend>
@@ -1344,6 +1365,7 @@ $('dbTable').addEventListener('click', e => {
   const sb = e.target.closest('[data-sort]'); if (sb) { const k = sb.dataset.sort; DB.dir = DB.sort === k ? -DB.dir : 1; DB.sort = k; renderCrops(); return; }
   const ed = e.target.closest('[data-edit]'); if (ed) openCropEditor(ed.dataset.edit);
 });
+$('epdModal').addEventListener('click', e => { if (e.target.id === 'epdModal') $('epdModal').hidden = true; });
 $('cropModal').addEventListener('click', e => { if (e.target.id === 'cropModal') { S.editCrop = null; S.confirm = null; renderLibrary(); } });
 /* as a crop's name is typed, offer matching crops from the lookup list; picking one fills in what hasn't been set by hand */
 const LK = LOOKUP.map(([name, botanical, group, spacingCm, rowCm, sowIn, sowOut, plantOut, harvest]) => ({ name, botanical, group, spacingCm, rowCm, sowIn: sowIn || null, sowOut: sowOut || null, plantOut: plantOut || null, harvest: harvest || null }));
@@ -1356,7 +1378,7 @@ function showSuggestions() {
     .sort((a, b) => (b.name.toLowerCase().startsWith(q) - a.name.toLowerCase().startsWith(q)) || a.name.localeCompare(b.name)).slice(0, 6);
   if (SUG.length === 1 && SUG[0].name.toLowerCase() === q && S.editCrop.epd) SUG = [];
   box.hidden = !SUG.length;
-  box.innerHTML = SUG.map((l, i) => `<button type="button" data-sug="${i}" role="option"><span>${esc(l.name)} <i>${esc(l.botanical)}</i></span>${have.has(l.name.toLowerCase()) ? '<span class="have">in your library</span>' : `<span class="note">${esc(GROUPS[l.group])}</span>`}</button>`).join('') + (SUG.length ? '<div class="ph">Fills in family, spacing and months you haven’t set yourself</div>' : '');
+  box.innerHTML = (SUG.length ? '<div class="src"><span>From the Edible Plant Database, University of Dundee</span><button type="button" class="linkbtn" data-act="aboutEpd">About</button></div>' : '') + SUG.map((l, i) => `<button type="button" data-sug="${i}" role="option"><span>${esc(l.name)} <i>${esc(l.botanical)}</i></span>${have.has(l.name.toLowerCase()) ? '<span class="have">in your library</span>' : `<span class="note">${esc(GROUPS[l.group])}</span>`}</button>`).join('') + (SUG.length ? '<div class="ph">Fills in family, spacing and months you haven’t set yourself</div>' : '');
 }
 function applySuggestion(l) {
   const c = S.editCrop, t = c._touched || {};
@@ -1453,6 +1475,8 @@ app.addEventListener('click', async e => {
   if (act === 'resetPrefs') { S.prefs = { ...PREF_DEFAULTS, theme: S.prefs.theme }; applyFamColours(); savePrefs(); renderPrefs(); renderTools(); }
   if (act === 'resetFamCols') { S.prefs.famColors = {}; applyFamColours(); savePrefs(); renderPrefs(); }
   if (act === 'openGuide') openWelcome(0);
+  if (act === 'aboutEpd') { $('epdModal').hidden = false; $('epdModal').querySelector('[data-act=closeEpd]').focus(); }
+  if (act === 'closeEpd') { $('epdModal').hidden = true; }
   if (act === 'addStarter') { const n = await addStarterCrops(); renderPrefs(); setStatus(n ? `Added ${plural(n, 'starter crop')}` : 'Saved'); }
   if (act === 'bkpPlot') downloadBackup('plot');
   if (act === 'bkpCrops') downloadBackup('crops');
@@ -1530,6 +1554,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (!$('detailsModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); closeDetails(); } return; }
+  if (!$('epdModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); $('epdModal').hidden = true; } return; }
   if (!$('cropModal').hidden) { if (e.key === 'Escape') { e.preventDefault(); S.editCrop = null; S.confirm = null; renderLibrary(); } return; }
   const typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName || '');
   const key = e.key.toLowerCase();

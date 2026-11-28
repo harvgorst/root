@@ -193,6 +193,27 @@ test('welcome guide: Skip closes it, and Preferences can show it again', async o
   eq(await app.page.evaluate(() => location.hash), '#plan', 'guide shows the plan behind it');
 });
 
+test('crops from the search are marked as coming from the database, with an About panel', async open => {
+  const app = await openNow(open, { hash: '#crops' });
+  await app.page.click('#dbAdd'); await app.page.fill('#ce-name', 'kohl');
+  ok((await app.page.textContent('#ce-sug .src')).includes('Edible Plant Database'), 'dropdown names the source');
+  await app.page.click('#ce-sug [data-act=aboutEpd]');
+  ok(!(await app.page.isHidden('#epdModal')), 'About opens from the dropdown');
+  ok(await app.page.evaluate(() => getComputedStyle(document.getElementById('epdModal')).zIndex > getComputedStyle(document.getElementById('cropModal')).zIndex), 'About sits above the crop form');
+  const about = await app.page.textContent('#epdModal');
+  ok(about.includes('146 edible plants') && about.includes('Atlantic Central') && about.includes('Creative Commons Attribution 4.0'), 'facts and licence shown');
+  await app.page.keyboard.press('Escape');
+  ok(await app.page.isHidden('#epdModal') && !(await app.page.isHidden('#cropModal')), 'Escape closes About, the crop form stays');
+  await app.page.click('#ce-sug [data-sug="0"]');
+  ok((await app.page.textContent('#cropModalBody')).includes('About the database'), 'form note links to About');
+  await app.page.click('[data-act=saveCrop]'); await app.page.waitForTimeout(200);
+  const row = app.page.locator('#dbTable tr', { hasText: 'Kohlrabi' });
+  eq((await row.locator('td').nth(8).textContent()).trim(), 'Database', 'Source column says Database');
+  eq((await app.page.locator('#dbTable tr', { hasText: 'Carrot' }).locator('td').nth(8).textContent()).trim(), 'Your own', 'other crops say Your own');
+  await app.go('plan');
+  eq(await app.page.locator('#lib [data-cid] .ex.db').count(), 1, 'library tags the database crop');
+});
+
 for (const theme of ['drafting', 'eiderdown', 'woodwork', 'xp', 'root']) test(`every page renders in ${theme}`, async open => {
   const app = await openNow(open, { theme });
   for (const h of ['plan', 'list', 'calendar', 'crops', 'preferences']) { await app.go(h); await app.page.waitForTimeout(50); }
