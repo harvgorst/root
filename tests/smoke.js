@@ -151,29 +151,25 @@ test('crops already in the library are marked, and botanical names match', async
   await app.page.fill('#ce-name', 'x'); ok(await app.page.isHidden('#ce-sug'), 'hidden for one letter');
 });
 
-test('a new plot starts with an empty crop list; crops from other plans can be ticked back on', async open => {
+test('a new garden starts with no crops; the Crops page shows only its own', async open => {
   const app = await openNow(open);
-  ok(await app.page.locator('#lib [data-cid]').count() > 0, 'older plot keeps every crop');
+  ok(await app.page.locator('#lib [data-cid]').count() > 0, 'older garden keeps its crops');
   await app.page.selectOption('#plotSel', '__new');
   await app.page.fill('#np-name', 'Second plot'); await app.page.click('#newPlotForm [type=submit]'); await app.page.waitForTimeout(200);
-  eq(await app.page.locator('#lib [data-cid]').count(), 0, 'new plot list is empty');
-  ok((await app.page.textContent('#lib')).includes('No crops on this plan'), 'empty list explains itself');
-  await app.page.click('#addCropBtn'); await app.page.fill('#ce-name', 'carr');
-  const sug = await app.page.textContent('#ce-sug');
-  ok(sug.includes('Edible Plant Database') && !sug.includes('already on this plan'), 'search offers only the database on a new plan');
-  await app.page.click('#ce-sug [data-sug="0"]'); await app.page.click('[data-act=saveCrop]'); await app.page.waitForTimeout(200);
-  eq(await app.page.locator('#lib [data-cid]').count(), 1, 'database crop added to this plot');
+  eq(await app.page.locator('#lib [data-cid]').count(), 0, 'new garden list is empty');
+  ok((await app.page.textContent('#lib')).includes('No crops in this garden'), 'empty list explains itself');
   await app.go('crops');
-  eq(await app.page.locator('#dbTable [data-on]').count(), 1, 'Crops page shows this plan’s crops');
-  await app.page.selectOption('#dbOn', '');
-  const n = await app.page.locator('#dbTable [data-on]').count();
-  eq(await app.page.locator('#dbTable [data-on]:checked').count(), 1, 'Crops page ticks the one on this plan');
-  await app.page.locator('#dbTable [data-on]:not(:checked)').first().click(); await app.page.waitForTimeout(100);
-  eq(await app.page.locator('#dbTable [data-on]:checked').count(), 2, 'ticking adds another');
-  ok(n > 2, 'every saved crop listed on the Crops page');
+  eq(await app.page.locator('#dbTable [data-pick]').count(), 0, 'Crops page is empty too');
+  await app.page.click('#dbAdd'); await app.page.fill('#ce-name', 'carr');
+  const sug = await app.page.textContent('#ce-sug');
+  ok(sug.includes('Edible Plant Database') && !sug.includes('already on this plan'), 'search offers only the database');
+  await app.page.click('#ce-sug [data-sug="0"]'); await app.page.click('[data-act=saveCrop]'); await app.page.waitForTimeout(200);
+  eq(await app.page.locator('#dbTable [data-pick]').count(), 1, 'the new crop is the only one');
   await app.page.waitForTimeout(800);
   const plots = await Promise.all((await app.keys('plots/')).map(k => app.store(k)));
-  eq(plots.find(p => p.name === 'Second plot')?.lib?.length, 2, 'list saved with the plot');
+  eq(plots.find(p => p.name === 'Second plot')?.lib?.length, 1, 'list saved with the garden');
+  await app.page.selectOption('#plotSel', 'now'); await app.page.waitForTimeout(200);
+  ok(!(await app.page.textContent('#dbTable')).includes('Daucus') && (await app.page.locator('#dbTable [data-pick]').count()) > 1, 'the other garden doesn’t get it');
 });
 
 test('dragging the plot edge changes its size; the top edge shifts everything down', async open => {
@@ -195,21 +191,29 @@ test('dragging the plot edge changes its size; the top edge shifts everything do
   eq((await st()).d, g0.d, 'undo restores the size');
 });
 
-test('crops can be deleted straight from the Crops page, but not while planted', async open => {
-  const app = await openNow(open, { hash: '#crops' });
-  await app.page.selectOption('#dbOn', '');
+test('crops can be deleted from the Crops page one at a time or several at once, but not while planted', async open => {
+  const seed = sample(); for (const n of ['Leek', 'Pea', 'Radish', 'Swede']) seed['crops/' + n.toLowerCase()] = { name: n, group: 'other', spacingCm: 10, rowCm: 30, variety: '', notes: '' };
+  const app = await opener(open)(seed, { hash: '#crops' }); await app.page.selectOption('#plotSel', 'now'); await app.page.waitForTimeout(100);
   const row = name => app.page.locator('#dbTable tbody tr', { hasText: name });
-  ok(await row('Carrot').locator('[data-del]').isDisabled(), 'planted crop cannot be deleted');
-  const before = await app.page.locator('#dbTable tbody tr').count();
-  const free = await app.page.locator('#dbTable [data-del]:not([disabled])').first();
-  const id = await free.getAttribute('data-del');
+  ok(await row('Carrot').locator('[data-del]').isDisabled() && await row('Carrot').locator('[data-pick]').isDisabled(), 'planted crop cannot be deleted or picked');
+  const count = () => app.page.locator('#dbTable tbody tr').count(), before = await count();
+  const free = app.page.locator('#dbTable [data-del]:not([disabled])').first(), id = await free.getAttribute('data-del');
   await free.click();
   ok((await app.page.textContent('#dbTable')).includes('Delete '), 'asks to confirm in the row');
   await app.page.keyboard.press('Escape');
   eq(await app.page.locator('#dbTable [data-delyes]').count(), 0, 'Escape keeps it');
   await app.page.locator(`#dbTable [data-del="${id}"]`).click(); await app.page.click('#dbTable [data-delyes]'); await app.page.waitForTimeout(300);
-  eq(await app.page.locator('#dbTable tbody tr').count(), before - 1, 'row gone');
-  eq(await app.store('crops/' + id), undefined, 'deleted from storage');
+  eq(await count(), before - 1, 'row gone');
+  await app.page.waitForTimeout(800);
+  ok(!(await app.store('plots/now')).lib.includes(id), 'taken off this garden’s saved list');
+  const picks = app.page.locator('#dbTable [data-pick]:not([disabled])');
+  await picks.nth(0).click(); await picks.nth(1).click(); await picks.nth(2).click();
+  ok((await app.page.textContent('#dbCount')).includes('3 selected'), 'shows how many are selected');
+  await app.page.click('#bulkDel'); await app.page.click('#bulkYes'); await app.page.waitForTimeout(300);
+  eq(await count(), before - 4, 'three more gone at once');
+  await app.page.click('[data-pickall]');
+  const n = await app.page.locator('#dbTable [data-pick]:checked').count();
+  eq(n, await app.page.locator('#dbTable [data-pick]:not([disabled])').count(), 'header box selects every crop that can go');
 });
 
 test('the crop data is credited in Preferences', async open => {
